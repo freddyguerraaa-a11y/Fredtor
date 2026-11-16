@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control de Tickets - Robótica</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      filter: invert(35%) sepia(85%) saturate(1800%) hue-rotate(205deg) brightness(95%) contrast(95%);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Barra de Navegación Superior -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+          <i class="fa-solid fa-robot text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold text-slate-900 leading-tight">Control de Tickets</h1>
+          <p class="text-xs text-slate-500 hidden sm:block">Gestión y seguimiento de sesiones de Robótica</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button id="btn-export-csv" class="inline-flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition cursor-pointer">
+          <i class="fa-solid fa-file-excel text-emerald-600"></i>
+          <span class="hidden sm:inline">Exportar Excel</span>
+        </button>
+        <button id="btn-open-modal" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-sm transition cursor-pointer">
+          <i class="fa-solid fa-plus"></i>
+          <span>Nuevo Ticket</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenido Principal -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+
+    <!-- Tarjetas de Resumen (Total, Usados, Restantes) -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+      <!-- Total de Tickets -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total de Tickets</p>
+          <p id="stat-total" class="text-3xl font-extrabold text-slate-900 mt-1">56</p>
+          <p class="text-xs text-slate-500 mt-1">Tickets registrados en total</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-ticket"></i>
+        </div>
+      </div>
+
+      <!-- Tickets Usados -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tickets Usados</p>
+          <p id="stat-used" class="text-3xl font-extrabold text-amber-600 mt-1">0</p>
+          <p class="text-xs text-slate-500 mt-1">Sesiones ya marcadas</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+      </div>
+
+      <!-- Tickets Restantes -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tickets que Quedan</p>
+          <p id="stat-remaining" class="text-3xl font-extrabold text-emerald-600 mt-1">56</p>
+          <p class="text-xs text-slate-500 mt-1">Disponibles por utilizar</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-hourglass-half"></i>
+        </div>
+      </div>
+    </section>
+
+    <!-- Barra de Progreso de Consumo -->
+    <section class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs">
+      <div class="flex items-center justify-between text-xs sm:text-sm mb-2">
+        <span class="font-semibold text-slate-700">Progreso de uso de tickets</span>
+        <span id="stat-percent" class="font-bold text-blue-600">0% utilizado</span>
+      </div>
+      <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+        <div id="progress-bar" class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: 0%;"></div>
+      </div>
+    </section>
+
+    <!-- Barra de Herramientas, Filtros y Buscador -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <!-- Buscador -->
+      <div class="relative flex-1">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </span>
+        <input type="text" id="search-input" placeholder="Buscar por número de ticket o notas..." class="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition" />
+      </div>
+
+      <!-- Filtros de Estado -->
+      <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+        <button data-filter="all" class="filter-btn active px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-xs transition cursor-pointer">
+          Todos
+        </button>
+        <button data-filter="active" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+          Disponibles
+        </button>
+        <button data-filter="used" class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+          Usados
+        </button>
+      </div>
+
+      <!-- Acciones de Lote -->
+      <div class="flex items-center gap-2">
+        <button id="btn-load-sample" title="Restaurar los 56 tickets" class="px-3 py-2 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+          <i class="fa-solid fa-rotate-right mr-1"></i> Restaurar 56
+        </button>
+        <button id="btn-clear-all" title="Borrar todo" class="px-3 py-2 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition cursor-pointer">
+          <i class="fa-solid fa-trash-can mr-1"></i> Limpiar
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabla de Control de Tickets -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50/75 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <th scope="col" class="py-3.5 px-4 w-16 text-center">Usado</th>
+              <th scope="col" class="py-3.5 px-4 w-44">Ticket</th>
+              <th scope="col" class="py-3.5 px-4 min-w-[240px]">
+                <i class="fa-regular fa-calendar-days text-slate-400 mr-1"></i> Fecha y Hora
+              </th>
+              <th scope="col" class="py-3.5 px-4">Notas / Observaciones</th>
+              <th scope="col" class="py-3.5 px-4 w-24 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tickets-table-body" class="divide-y divide-slate-100 text-sm">
+            <!-- Filas dinámicas -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Estado Vacío -->
+      <div id="empty-state" class="hidden py-12 px-4 text-center">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-2xl mb-3">
+          <i class="fa-solid fa-ticket"></i>
+        </div>
+        <h3 class="text-sm font-semibold text-slate-800">No se encontraron tickets</h3>
+        <p class="text-xs text-slate-500 mt-1">Prueba cambiando el filtro de búsqueda o restaura los 56 tickets iniciales.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal para Crear / Editar Ticket -->
+  <div id="ticket-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-fade-in">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <h2 id="modal-title" class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-ticket text-blue-600"></i>
+          <span>Registrar Nuevo Ticket</span>
+        </h2>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="ticket-form" class="p-6 space-y-4">
+        <input type="hidden" id="form-ticket-id">
+
+        <!-- Número del Ticket -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1" for="form-code">Número de Ticket *</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs font-mono">#</span>
+            <input type="text" id="form-code" required placeholder="57" class="w-full pl-7 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono font-bold">
+          </div>
+        </div>
+
+        <!-- Calendario Día y Hora -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-slate-600" for="form-datetime">
+              <i class="fa-regular fa-calendar-check text-blue-600 mr-1"></i> Día y Hora de la Sesión
+            </label>
+            <button type="button" id="btn-set-now" class="text-[11px] text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+              Usar fecha y hora actual
+            </button>
+          </div>
+          <div class="relative">
+            <input type="datetime-local" id="form-datetime" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-sans">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Haz clic en el campo o en el ícono del calendario para seleccionar el día y hora.</p>
+        </div>
+
+        <!-- Casilla de Verificación: Usado -->
+        <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <div>
+            <p class="text-xs font-semibold text-slate-800">Marcar ticket como usado</p>
+            <p class="text-[11px] text-slate-500">Se descontará de los tickets disponibles</p>
+          </div>
+          <input type="checkbox" id="form-used" class="w-5 h-5 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
+        </div>
+
+        <!-- Notas -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1" for="form-notes">Notas / Observaciones</label>
+          <textarea id="form-notes" rows="2" placeholder="Ej. Clase de sensores ultrasónicos..." class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+        </div>
+
+        <!-- Botones del Formulario -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" id="btn-cancel-modal" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer">
+            Cancelar
+          </button>
+          <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition cursor-pointer">
+            Guardar Ticket
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Contenedor de Notificaciones Toast -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Lógica en JavaScript -->
+  <script>
+    // Listado exacto de los 56 códigos de tickets proporcionados
+    const TICKET_CODES = [
+      "2AG1RBB5P", "2AGDSATIF", "2AGK08J57", "2AGC84IF7",
+      "2AG0QSWEY", "2AG0JPKUT", "2AG2KN4A5", "2AGB691F8",
+      "2AGK2E6QO", "2AGJZ5Z6V", "2AGQVRWV4", "2AGDZ5G55",
+      "2AGF1UTBC", "2AG6CQ4LE", "2AGTPFDNM", "2AGYNPMN3",
+      "2AGUE7O5P", "2AGB6QF6W", "2AGYYDIN7", "2AGS8L1KJ",
+      "2AGH8AIV7", "2AGJ9ZWPN", "2AGJWBNIY", "2AG4ZOF2X",
+      "2AGJM539Y", "2AGQLJ9PH", "2AGXP95HV", "2AGU3CB4C",
+      "2AGWL2YDJ", "2AGJHGSQ0", "2AGE7X7XW", "2AGR3K7X1",
+      "2AGUP43DY", "2AGEEDEIG", "2AG5LKS62", "2AGQ04KLT",
+      "2AG44UVD8", "2AGHY4PU2", "2AG09BKMJ", "2AGCSSZ93",
+      "2AGLLVR7Q", "2AGBV1YLS", "2AGI8BVAF", "2AGS1F66B",
+      "2AGJHRB0W", "2AGSMJMAD", "2AGM5DV9V", "2AGOBJ9C0",
+      "2AG5TS23W", "2AG0MUBNE", "2AG8DPMXU", "2AGSRCTMC",
+      "2AGCJP1L8", "2AGLKZ6SI", "2AGDMRKVV", "2AGD1I6NW"
+    ];
+
+    // Generar los 56 tickets iniciales numerados del 1 al 56 con sus códigos en Notas/Observaciones
+    function generateInitialTickets() {
+      const list = [];
+      for (let i = 1; i <= 56; i++) {
+        list.push({
+          id: `t-${i}`,
+          code: String(i),
+          datetime: '',
+          used: false,
+          notes: TICKET_CODES[i - 1] || ''
+        });
+      }
+      return list;
+    }
+
+    // Estado de la aplicación
+    let tickets = [];
+    let currentFilter = 'all'; // all | active | used
+    let searchQuery = '';
+
+    // Cargar datos al iniciar
+    function loadTickets() {
+      const stored = localStorage.getItem('robotics_tickets_56_exact_v1');
+      if (stored) {
+        try {
+          tickets = JSON.parse(stored);
+        } catch (e) {
+          console.error('Error al cargar localStorage, usando plantilla de 56 tickets', e);
+          tickets = generateInitialTickets();
+        }
+      } else {
+        tickets = generateInitialTickets();
+        saveTickets();
+      }
+      renderApp();
+    }
+
+    // Guardar en LocalStorage
+    function saveTickets() {
+      localStorage.setItem('robotics_tickets_56_exact_v1', JSON.stringify(tickets));
+    }
+
+    // Obtener valor actual para datetime-local (formato YYYY-MM-DDTHH:mm)
+    function getCurrentDateTimeLocal() {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      return now.toISOString().slice(0, 16);
+    }
+
+    // Actualizar Estadísticas (Total, Usados, Restantes)
+    function updateStats() {
+      const total = tickets.length;
+      const used = tickets.filter(t => t.used).length;
+      const remaining = total - used;
+      const percentage = total > 0 ? Math.round((used / total) * 100) : 0;
+
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-used').textContent = used;
+      document.getElementById('stat-remaining').textContent = remaining;
+      document.getElementById('stat-percent').textContent = `${percentage}% utilizado`;
+      document.getElementById('progress-bar').style.width = `${percentage}%`;
+    }
+
+    // Renderizar toda la interfaz
+    function renderApp() {
+      updateStats();
+
+      const tbody = document.getElementById('tickets-table-body');
+      const emptyState = document.getElementById('empty-state');
+      tbody.innerHTML = '';
+
+      // Filtrar según estado y texto de búsqueda
+      const filteredTickets = tickets.filter(t => {
+        const matchesFilter =
+          currentFilter === 'all' ? true :
+          currentFilter === 'used' ? t.used :
+          !t.used;
+
+        const q = searchQuery.toLowerCase().trim();
+        const matchesSearch = !q || (
+          String(t.code).toLowerCase().includes(q) ||
+          (t.notes && t.notes.toLowerCase().includes(q))
+        );
+
+        return matchesFilter && matchesSearch;
+      });
+
+      if (filteredTickets.length === 0) {
+        emptyState.classList.remove('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      // Ordenar por número de ticket ascendente (1, 2, 3...)
+      const sorted = [...filteredTickets].sort((a, b) => {
+        const numA = parseInt(a.code, 10);
+        const numB = parseInt(b.code, 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        return String(a.code).localeCompare(String(b.code));
+      });
+
+      sorted.forEach(ticket => {
+        const tr = document.createElement('tr');
+        tr.className = `border-b border-slate-100 hover:bg-slate-50/80 transition duration-150 ${ticket.used ? 'bg-slate-50/60' : 'bg-white'}`;
+
+        tr.innerHTML = `
+          <!-- Checkbox interactivo -->
+          <td class="py-3 px-4 text-center align-middle">
+            <label class="relative inline-flex items-center justify-center cursor-pointer p-1">
+              <input type="checkbox" data-id="${ticket.id}" class="ticket-checkbox w-5 h-5 text-blue-600 bg-white border-2 border-slate-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer transition" ${ticket.used ? 'checked' : ''}>
+            </label>
+          </td>
+
+          <!-- Número de Ticket y Badge de Estado -->
+          <td class="py-3 px-4 align-middle">
+            <div class="flex items-center gap-2.5">
+              <span class="inline-flex items-center justify-center min-w-[2.25rem] px-2 py-1 rounded-lg font-mono font-bold text-sm ${ticket.used ? 'bg-slate-200/70 text-slate-400 line-through' : 'bg-blue-50 text-blue-700 border border-blue-200/60'}">
+                ${escapeHtml(ticket.code)}
+              </span>
+              ${ticket.used
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800"><i class="fa-solid fa-check mr-1 text-[10px]"></i> Usado</span>'
+                : '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-circle-dot mr-1 text-[9px]"></i> Disponible</span>'
+              }
+            </div>
+          </td>
+
+          <!-- Selector de Calendario (Día y Hora directo en fila) -->
+          <td class="py-3 px-4 align-middle">
+            <div class="flex items-center gap-1.5">
+              <input
+                type="datetime-local"
+                data-id="${ticket.id}"
+                value="${ticket.datetime || ''}"
+                aria-label="Seleccionar fecha y hora para ticket ${escapeHtml(ticket.code)}"
+                class="inline-date-input px-2.5 py-1.5 text-xs font-medium rounded-lg border transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${ticket.used ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-white border-slate-300 text-slate-700 hover:border-blue-400'}"
+              />
+              <button
+                type="button"
+                title="Abrir calendario"
+                data-id="${ticket.id}"
+                class="btn-trigger-calendar p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+              >
+                <i class="fa-regular fa-calendar-days text-sm"></i>
+              </button>
+            </div>
+          </td>
+
+          <!-- Notas -->
+          <td class="py-3 px-4 align-middle">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-lg font-mono text-xs font-semibold ${ticket.used ? 'bg-slate-100 text-slate-400 line-through' : 'bg-slate-100 text-slate-700 border border-slate-200/80'}" title="${escapeHtml(ticket.notes || 'Sin notas')}">
+              ${ticket.notes ? escapeHtml(ticket.notes) : '<span class="text-slate-300 italic font-sans font-normal">Sin observaciones</span>'}
+            </span>
+          </td>
+
+          <!-- Acciones -->
+          <td class="py-3 px-4 text-right align-middle">
+            <div class="inline-flex items-center gap-1">
+              <button title="Editar ticket o agregar nota" data-id="${ticket.id}" class="btn-edit-ticket p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer">
+                <i class="fa-regular fa-pen-to-square"></i>
+              </button>
+              <button title="Eliminar ticket" data-id="${ticket.id}" class="btn-delete-ticket p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            </div>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      attachRowEventListeners();
+    }
+
+    // Prevenir inyecciones XSS en el HTML
+    function escapeHtml(text) {
+      if (text === null || text === undefined) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Asignar eventos a las filas
+    function attachRowEventListeners() {
+      // Toggle de Checkbox
+      document.querySelectorAll('.ticket-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const id = e.target.getAttribute('data-id');
+          const isChecked = e.target.checked;
+          toggleTicketStatus(id, isChecked);
+        });
+      });
+
+      // Cambio directo en el calendario de la fila
+      document.querySelectorAll('.inline-date-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const id = e.target.getAttribute('data-id');
+          const newDate = e.target.value;
+          updateTicketDate(id, newDate);
+        });
+      });
+
+      // Botón ícono de calendario para abrir el selector nativo directamente
+      document.querySelectorAll('.btn-trigger-calendar').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          const input = document.querySelector(`.inline-date-input[data-id="${id}"]`);
+          if (input) {
+            if (typeof input.showPicker === 'function') {
+              try {
+                input.showPicker();
+              } catch (err) {
+                input.focus();
+              }
+            } else {
+              input.focus();
+              input.click();
+            }
+          }
+        });
+      });
+
+      // Editar ticket
+      document.querySelectorAll('.btn-edit-ticket').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          openEditModal(id);
+        });
+      });
+
+      // Eliminar ticket
+      document.querySelectorAll('.btn-delete-ticket').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          deleteTicket(id);
+        });
+      });
+    }
+
+    // Actualizar fecha directamente desde la fila
+    function updateTicketDate(id, newDateTime) {
+      const ticket = tickets.find(t => t.id === id);
+      if (ticket) {
+        ticket.datetime = newDateTime;
+        saveTickets();
+        showToast(`Fecha actualizada para Ticket #${ticket.code}`, 'fa-calendar-check text-blue-400');
+      }
+    }
+
+    // Cambiar estado Usado / Disponible
+    function toggleTicketStatus(id, isUsed) {
+      const ticket = tickets.find(t => t.id === id);
+      if (ticket) {
+        ticket.used = isUsed;
+        if (isUsed && !ticket.datetime) {
+          ticket.datetime = getCurrentDateTimeLocal();
+        }
+        saveTickets();
+        renderApp();
+        showToast(
+          isUsed ? `Ticket #${ticket.code} marcado como USADO` : `Ticket #${ticket.code} reactivado como DISPONIBLE`,
+          isUsed ? 'fa-circle-check text-amber-400' : 'fa-circle-check text-emerald-400'
+        );
+      }
+    }
+
+    // Modal Control
+    const modal = document.getElementById('ticket-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const form = document.getElementById('ticket-form');
+
+    function openModal() {
+      form.reset();
+      document.getElementById('form-ticket-id').value = '';
+      modalTitle.innerHTML = `<i class="fa-solid fa-ticket text-blue-600"></i><span>Registrar Nuevo Ticket</span>`;
+
+      const maxNum = tickets.reduce((max, t) => {
+        const n = parseInt(t.code, 10);
+        return !isNaN(n) && n > max ? n : max;
+      }, 0);
+      document.getElementById('form-code').value = String(maxNum + 1);
+      document.getElementById('form-datetime').value = '';
+      document.getElementById('form-used').checked = false;
+
+      modal.classList.remove('hidden');
+    }
+
+    function openEditModal(id, focusDate = false) {
+      const ticket = tickets.find(t => t.id === id);
+      if (!ticket) return;
+
+      document.getElementById('form-ticket-id').value = ticket.id;
+      document.getElementById('form-code').value = ticket.code;
+      document.getElementById('form-datetime').value = ticket.datetime || '';
+      document.getElementById('form-used').checked = !!ticket.used;
+      document.getElementById('form-notes').value = ticket.notes || '';
+
+      modalTitle.innerHTML = `<i class="fa-solid fa-pen text-blue-600"></i><span>Modificar Ticket #${ticket.code}</span>`;
+      modal.classList.remove('hidden');
+
+      if (focusDate) {
+        setTimeout(() => {
+          document.getElementById('form-datetime').focus();
+        }, 100);
+      }
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      form.reset();
+    }
+
+    // Guardar / Actualizar Ticket
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const id = document.getElementById('form-ticket-id').value;
+      const code = document.getElementById('form-code').value.trim();
+      const datetime = document.getElementById('form-datetime').value;
+      const used = document.getElementById('form-used').checked;
+      const notes = document.getElementById('form-notes').value.trim();
+
+      if (!code) {
+        showToast('Por favor indica el número de ticket', 'fa-triangle-exclamation text-amber-400');
+        return;
+      }
+
+      if (id) {
+        const index = tickets.findIndex(t => t.id === id);
+        if (index !== -1) {
+          tickets[index] = { ...tickets[index], code, datetime, used, notes };
+          showToast(`Ticket #${code} actualizado con éxito`, 'fa-circle-check text-blue-400');
+        }
+      } else {
+        const newTicket = {
+          id: 't-' + Date.now(),
+          code,
+          datetime,
+          used,
+          notes
+        };
+        tickets.push(newTicket);
+        showToast(`Nuevo ticket #${code} creado correctamente`, 'fa-circle-check text-emerald-400');
+      }
+
+      saveTickets();
+      renderApp();
+      closeModal();
+    });
+
+    // Eliminar Ticket
+    function deleteTicket(id) {
+      const ticket = tickets.find(t => t.id === id);
+      if (!ticket) return;
+
+      tickets = tickets.filter(t => t.id !== id);
+      saveTickets();
+      renderApp();
+      showToast(`Ticket #${ticket.code} eliminado`, 'fa-trash-can text-rose-400');
+    }
+
+    // Exportar a archivo CSV (compatible con Excel)
+    function exportToCSV() {
+      if (tickets.length === 0) {
+        showToast('No hay datos para exportar', 'fa-circle-info text-amber-400');
+        return;
+      }
+
+      const headers = ['Ticket', 'Fecha y Hora', 'Estado', 'Notas'];
+      const rows = tickets.map(t => [
+        `"${t.code}"`,
+        `"${t.datetime || ''}"`,
+        t.used ? '"USADO"' : '"DISPONIBLE"',
+        `"${(t.notes || '').replace(/"/g, '""')}"`
+      ]);
+
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Control_Tickets_Robotica_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Descargando archivo compatible con Excel...', 'fa-file-excel text-emerald-400');
+    }
+
+    // Notificaciones Toast flotantes
+    function showToast(message, iconClass = 'fa-circle-info text-blue-400') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 transition-all duration-300 transform translate-y-2 opacity-0';
+      toast.innerHTML = `<i class="fa-solid ${iconClass} text-sm"></i><span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    // Inicialización de Eventos al cargar la ventana
+    window.addEventListener('DOMContentLoaded', () => {
+      loadTickets();
+
+      // Abrir / Cerrar Modal
+      document.getElementById('btn-open-modal').addEventListener('click', openModal);
+      document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+      document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+      // Botón "Usar fecha y hora actual"
+      document.getElementById('btn-set-now').addEventListener('click', () => {
+        document.getElementById('form-datetime').value = getCurrentDateTimeLocal();
+      });
+
+      // Buscador
+      document.getElementById('search-input').addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderApp();
+      });
+
+      // Filtros de estado
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('bg-white', 'text-slate-900', 'shadow-xs');
+            b.classList.add('text-slate-600');
+          });
+          btn.classList.add('bg-white', 'text-slate-900', 'shadow-xs');
+          btn.classList.remove('text-slate-600');
+
+          currentFilter = btn.getAttribute('data-filter');
+          renderApp();
+        });
+      });
+
+      // Exportar CSV
+      document.getElementById('btn-export-csv').addEventListener('click', exportToCSV);
+
+      // Restaurar los 56 tickets iniciales
+      document.getElementById('btn-load-sample').addEventListener('click', () => {
+        tickets = generateInitialTickets();
+        saveTickets();
+        renderApp();
+        showToast('56 tickets restaurados', 'fa-rotate-right text-blue-400');
+      });
+
+      // Limpiar todos los datos
+      document.getElementById('btn-clear-all').addEventListener('click', () => {
+        tickets = [];
+        saveTickets();
+        renderApp();
+        showToast('Lista de tickets vaciada', 'fa-trash-can text-amber-400');
+      });
+    });
+  </script>
+</body>
+</html>
